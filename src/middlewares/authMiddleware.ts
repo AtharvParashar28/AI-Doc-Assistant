@@ -1,42 +1,38 @@
 import { verifyToken } from "../services/authService";
 import { Request, Response, NextFunction } from "express";
 import { ApiResponse } from "../models/ApiResponse";
+import { HTTP_STATUS_CODE, ERROR_MESSAGES } from "../constants/statusCode";
+import { customError } from "../models/customError";
+
+// interface CustomAuthError extends Error {
+//   statusCode?: number;
+// }
 
 /**
  * Authentication middleware
  * - Parses `Authorization` header expecting `Bearer <token>`
  * - Verifies token and attaches decoded payload to `req.user`
- *
- * Teaching notes:
- * - Always validate header shape before splitting to avoid runtime errors.
- * - Use `401` for authentication failures (missing/invalid token).
- * - Avoid logging sensitive headers in production.
- * - Prefer extending Express.Request to type `req.user`; a simple cast is used here for brevity.
+ * - Delegates failures to the global error handler.
  */
 export function authMiddleware(req: Request, res: Response<ApiResponse>, next: NextFunction) {
-    // Read the Authorization header (may be undefined)
-    const authHeader = req.headers['authorization'];
+    try {
+      const authHeader = req.headers.authorization;
 
-    if (!authHeader) {
-        // No Authorization header present
-        return res.status(401).json({
-            status: "failed",
-            description: "Access Denied: No Authorization header",
-        });
-    }
+      if (!authHeader) {
+        const error = new Error(ERROR_MESSAGES.UNAUTHORIZED) as customError;
+        error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
+        throw error;
+      }
 
-    // Header should be in form: "Bearer <token>"
     const match = authHeader.match(/^Bearer\s+(.+)$/i);
     if (!match) {
-        return res.status(401).json({
-            status: "failed",
-            description: "Access Denied: Invalid Authorization format",
-        });
+      const error = new Error(ERROR_MESSAGES.INVALID_AUTH_FORMAT) as customError;
+      error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
+      throw error;
     }
 
     const token = match[1].trim();
 
-    try {
         // verifyToken should throw if token is invalid or expired
         const decoded = verifyToken(token);
 
@@ -44,11 +40,12 @@ export function authMiddleware(req: Request, res: Response<ApiResponse>, next: N
         req.user = decoded;
 
         return next();
-    } catch (err) {
-        // Keep error messages generic to avoid leaking details
-        return res.status(401).json({
-            status: "failed",
-            description: "Access Denied: Invalid or expired token",
-        });
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(ERROR_MESSAGES.INVALID_TOKEN);
+    const authError = error as customError;
+    if (!authError.statusCode) {
+      authError.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
     }
+    return next(authError);
+  }
 }

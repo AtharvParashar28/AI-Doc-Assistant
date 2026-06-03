@@ -1,89 +1,86 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { ApiResponse } from "../models/ApiResponse";
 import { createUser, loginUser } from "../services/createUser";
 import { Users } from "../models/Users";
+import { customError } from "../models/customError";
+import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/statusCode";
 
-const UserCreated = "User created successfully";
-const UserExist = "User already exist";
-const InvalidCredentials = "Invalid credentials";
-const LoggedIn = "User successfully logged in";
-const InvalidLogin = "Invalid email or password";
-const UserNotFound = "User does not exist";
-const UserFetched = "Authenticated user data retrieved";
 
-export async function signup(req: Request, res: Response<ApiResponse>) {
+export async function signup(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     const payload = req.body;
 
-    if (!payload.email || !payload.password) {
-        return res.status(400).json({
-            status: "failed",
-            description: InvalidCredentials,
-        });
-    }
-
     try {
+
+        if (!payload.email || !payload.password) {
+            const error = new Error(ERROR_MESSAGES.INVALID_CREDENTIALS) as customError;
+            error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
+            throw error;
+        }
+
         const token = await createUser(payload);
-        return res.status(200).json({
-            status: "success",
-            description: UserCreated,
+
+        return res.status(HTTP_STATUS_CODE.CREATED).json({
+            status: RESPONSE_STATUS.SUCCESS,
+            message: SUCCESS_MESSAGES.USER_CREATED,
             data: { token },
         });
+
     } catch (err) {
-        return res.status(409).json({
-            status: "failed",
-            description: UserExist,
-        });
+        const error = new Error(ERROR_MESSAGES.INVALID_CREDENTIALS) as customError;
+        error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
+        next(error);
     }
 }
 
 export async function login(req: Request, res: Response<ApiResponse>) {
     const payload = req.body;
-
-    if (!payload.email || !payload.password) {
-        return res.status(400).json({
-            status: "failed",
-            description: InvalidCredentials,
-        });
-    }
-
     try {
+
+        if (!payload.email || !payload.password) {
+            const error = new Error(ERROR_MESSAGES.INVALID_CREDENTIALS) as customError;
+            error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
+            throw error;
+        }
+
         const token = await loginUser(payload);
-        return res.status(200).json({
-            status: "success",
-            description: LoggedIn,
+
+        return res.status(HTTP_STATUS_CODE.OK).json({
+            status: RESPONSE_STATUS.SUCCESS,
+            message: SUCCESS_MESSAGES.USER_LOGGED_IN,
             data: { token },
         });
     } catch (err) {
-        return res.status(401).json({
-            status: "failed",
-            description: InvalidLogin,
-        });
+        const error = new Error(ERROR_MESSAGES.INVALID_EMAIL_OR_PASSWORD) as customError;
+        error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
+        throw error;
     }
 }
 
-export async function getCurrentUser(req: Request, res: Response<ApiResponse>) {
-    const email = req.user?.email;
+export async function getCurrentUser(req: Request, res: Response<ApiResponse>, next : NextFunction) {
+    try {
+        const email = req.user?.email;
 
-    if (!email) {
-        return res.status(401).json({
-            status: "failed",
-            description: "Invalid token payload",
+        if (!email) {
+            const error = new Error(ERROR_MESSAGES.INVALID_TOKEN_PAYLOAD) as customError;
+            error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
+            throw error;
+        }
+
+        const user = Users.get(email);
+        if (!user) {
+            const error = new Error(ERROR_MESSAGES.USER_NOT_FOUND) as customError;
+            error.statusCode = HTTP_STATUS_CODE.NOT_FOUND;
+            throw error;
+        }
+
+        return res.status(HTTP_STATUS_CODE.OK).json({
+            status: RESPONSE_STATUS.SUCCESS,
+            message: SUCCESS_MESSAGES.USER_FETCHED,
+            data: {
+                email: user.email,
+            },
         });
+    } catch (error) {
+        next(error)
     }
-
-    const user = Users.get(email);
-    if (!user) {
-        return res.status(404).json({
-            status: "failed",
-            description: UserNotFound,
-        });
-    }
-
-    return res.status(200).json({
-        status: "success",
-        description: UserFetched,
-        data: {
-            email: user.email,
-        },
-    });
 }
