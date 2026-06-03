@@ -1,5 +1,5 @@
 export interface ApiResponse<T = unknown> {
-  status: 'success' | 'failed';
-  description: string;
+  status: string;
+  message: string;
   data?: T;
 }

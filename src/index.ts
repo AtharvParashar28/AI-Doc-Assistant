@@ -1,11 +1,12 @@
 import dotenv from 'dotenv';
+dotenv.config(); //Environment variable must load before everything
+
 import express from 'express';
 import cors from 'cors';
 import singupRoute from './routes/signupRoutes';
 import authRoute from './routes/authRoutes';
 import usersRoute from './routes/usersRoutes';
-
-dotenv.config();
+import { globalErrors } from './middlewares/errorMiddleware';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
@@ -19,6 +20,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', singupRoute);
 app.use('/api/auth', authRoute);
 app.use('/api', usersRoute);
+
+// Global error handler
+app.use(globalErrors);
 
 // Start server
 app.listen(PORT, () => {

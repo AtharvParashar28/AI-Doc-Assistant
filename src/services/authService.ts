@@ -7,7 +7,13 @@ export interface JwtPayload {
 }
 
 const expiresIn = process.env.JWT_EXPIRES_IN || '1h';
-const secretKey = process.env.JWT_SECRET || 'defaulter';
+const secretKeyRaw = process.env.JWT_SECRET ;
+
+if(!secretKeyRaw){
+  throw new Error('Jwt secret is required');
+}
+
+const secretKey : string = secretKeyRaw!;
 
 export function generateToken(payload: JwtPayload): string {
   return jwt.sign(
