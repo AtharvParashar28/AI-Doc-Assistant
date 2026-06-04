@@ -36,7 +36,11 @@ export const ERROR_MESSAGES = {
 
   // Validation errors
   INVALID_CREDENTIALS: 'Invalid credentials',
-  MISSING_FIELDS: 'Email and password are required',
+  MISSING_FIELDS: 'Required fields are missing',
+
+  // Resource errors
+  RESOURCE_ALREADY_EXISTS: 'Resource already exists',
+  RESOURCE_NOT_FOUND: 'Resource does not exist',
 
   // User errors
   USER_ALREADY_EXISTS: 'User already exists',
