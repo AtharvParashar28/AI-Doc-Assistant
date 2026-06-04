@@ -6,6 +6,7 @@ import cors from 'cors';
 import singupRoute from './routes/signupRoutes';
 import authRoute from './routes/authRoutes';
 import usersRoute from './routes/usersRoutes';
+import documentRoute from './routes/documentRoutes';
 import { globalErrors } from './middlewares/errorMiddleware';
 
 const app = express();
@@ -20,6 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', singupRoute);
 app.use('/api/auth', authRoute);
 app.use('/api', usersRoute);
+app.use('/api', documentRoute);
 
 // Global error handler
 app.use(globalErrors);
