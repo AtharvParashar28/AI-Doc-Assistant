@@ -1,11 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import { ApiResponse } from "../models/ApiResponse";
-import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/statusCode";
+import { HTTP_STATUS_CODE, ERROR_MESSAGES } from "../constants/statusCode";
 import { customError } from "../models/customError";
-import { Document } from "../models/document.model";
-import { Documents } from "../models/Documents";
+import { createDocument, deleteDocumentById, getDocumentById, getAllDocuments, updateDocument } from "../services/documentService";
 
-export function createDocument(req : Request, res : Response<ApiResponse>, next : NextFunction){
+export function CreateDocumentController(req : Request, res : Response<ApiResponse>, next : NextFunction){
     try {
         if(!req.body || !req.body.filepath || !req.body.filename){
         const error = new Error(ERROR_MESSAGES.MISSING_FIELDS) as customError;
@@ -13,26 +12,13 @@ export function createDocument(req : Request, res : Response<ApiResponse>, next 
         return next(error);
     }
 
-    
-    if(!req.user){
-        return ;
-    }
+    // Calling document creation service; the service returns an ApiResponse
+    // for both new documents and already-existing documents.
+    const result = createDocument(req);
 
-    const documentId : string = `${req.body.filename + req.body.filepath.replaceAll('/', '')}`;
-
-    const newDoc : Document = {
-           documentId : documentId,
-           uploadedBy : req.user.email,
-           uploadedAt : new Date()
-    }
-
-    Documents.set(newDoc.documentId,newDoc);
-
-    res.status(HTTP_STATUS_CODE.CREATED).json({
-        status : RESPONSE_STATUS.SUCCESS,
-        message : SUCCESS_MESSAGES.OPERATION_SUCCESS,
-        data : newDoc
-    })
+    // No need to throw here: createDocument will either return a valid ApiResponse
+    // or throw a service error that gets handled by the catch block.
+    res.json(result);
 
     } catch (err) {
         const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
@@ -43,26 +29,20 @@ export function createDocument(req : Request, res : Response<ApiResponse>, next 
 
 export function documentById(req : Request, res : Response<ApiResponse>, next : NextFunction) {
     try {
+        // Normalize the ID from route parameters (may be string or array).
         const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
+        // Validate that an ID was provided.
         if (!id) {
             const error = new Error(ERROR_MESSAGES.MISSING_FIELDS) as customError;
             error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
             return next(error);
         }
 
-        const document = Documents.get(id);
-        if (!document) {
-            const error = new Error(ERROR_MESSAGES.RESOURCE_NOT_FOUND) as customError;
-            error.statusCode = HTTP_STATUS_CODE.NOT_FOUND;
-            return next(error);
-        }
+        // Call service to fetch the document; service throws if not found.
+        const result = getDocumentById(id);
 
-        return res.status(HTTP_STATUS_CODE.OK).json({
-            status: RESPONSE_STATUS.SUCCESS,
-            message: SUCCESS_MESSAGES.DATA_RETRIEVED,
-            data: document
-        });
+        return res.status(HTTP_STATUS_CODE.OK).json(result);
     } catch (err) {
         const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
         error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
@@ -72,13 +52,10 @@ export function documentById(req : Request, res : Response<ApiResponse>, next : 
 
 export function documents(req : Request, res : Response<ApiResponse>, next : NextFunction) {
     try {
-        const allDocuments = Array.from(Documents.values());
+        // Call service to fetch all documents.
+        const result = getAllDocuments();
 
-        return res.status(HTTP_STATUS_CODE.OK).json({
-            status: RESPONSE_STATUS.SUCCESS,
-            message: SUCCESS_MESSAGES.DATA_RETRIEVED,
-            data: allDocuments
-        });
+        return res.status(HTTP_STATUS_CODE.OK).json(result);
     } catch (err) {
         const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
         error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
@@ -86,8 +63,9 @@ export function documents(req : Request, res : Response<ApiResponse>, next : Nex
     }
 }
 
-export function deleteDocumentById(req : Request, res : Response<ApiResponse>, next : NextFunction) {
+export function deleteDocumentController(req : Request, res : Response<ApiResponse>, next : NextFunction) {
     try {
+        // If it is an array use the first element otherwise only string
         const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
         if (!id) {
@@ -96,18 +74,12 @@ export function deleteDocumentById(req : Request, res : Response<ApiResponse>, n
             return next(error);
         }
 
-        if (!Documents.has(id)) {
-            const error = new Error(ERROR_MESSAGES.RESOURCE_NOT_FOUND) as customError;
-            error.statusCode = HTTP_STATUS_CODE.NOT_FOUND;
-            return next(error);
-        }
+        const result = deleteDocumentById(id);
 
-        Documents.delete(id);
+        // deleteDocumentById throws if the document is not found, so a result
+        // here means deletion succeeded and can be returned directly.
+        res.status(HTTP_STATUS_CODE.OK).json(result);
 
-        return res.status(HTTP_STATUS_CODE.OK).json({
-            status: RESPONSE_STATUS.SUCCESS,
-            message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
-        });
     } catch (err) {
         const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
         error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
@@ -117,40 +89,27 @@ export function deleteDocumentById(req : Request, res : Response<ApiResponse>, n
 
 export function updateDocumentById(req : Request, res : Response<ApiResponse>, next : NextFunction) {
     try {
+        // Normalize the ID from route parameters.
         const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
+        // Validate required fields: ID, filename, and filepath.
         if (!id || !req.body || typeof req.body.filename !== 'string' || typeof req.body.filepath !== 'string') {
             const error = new Error(ERROR_MESSAGES.MISSING_FIELDS) as customError;
             error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
             return next(error);
         }
 
+        // Ensure the request is authenticated.
         if (!req.user) {
             const error = new Error(ERROR_MESSAGES.INVALID_TOKEN_PAYLOAD) as customError;
             error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
             return next(error);
         }
 
-        const existingDocument = Documents.get(id);
-        if (!existingDocument) {
-            const error = new Error(ERROR_MESSAGES.RESOURCE_NOT_FOUND) as customError;
-            error.statusCode = HTTP_STATUS_CODE.NOT_FOUND;
-            return next(error);
-        }
+        // Call service to update the document; service throws if not found.
+        const result = updateDocument(id, req.body.filename, req.body.filepath, req.user.email);
 
-        const updatedDocument: Document = {
-            ...existingDocument,
-            uploadedBy: req.user.email,
-            uploadedAt: new Date(),
-        };
-
-        Documents.set(id, updatedDocument);
-
-        return res.status(HTTP_STATUS_CODE.OK).json({
-            status: RESPONSE_STATUS.SUCCESS,
-            message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
-            data: updatedDocument
-        });
+        return res.status(HTTP_STATUS_CODE.OK).json(result);
     } catch (err) {
         const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
         error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
