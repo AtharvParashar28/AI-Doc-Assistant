@@ -5,7 +5,7 @@ import { customError } from "../models/customError";
 import { Document } from "../models/Document.model";
 import { Documents } from "../models/Documents";
 
-export function createDocument(documentRequest : Request): ApiResponse {
+export function createDocument(documentRequest: Request): ApiResponse {
     try {
         const error = new Error() as customError;
 
@@ -16,8 +16,8 @@ export function createDocument(documentRequest : Request): ApiResponse {
             throw error;
         }
 
-    
-    const documentId : string = `${documentRequest.body.filename + documentRequest.body.filepath.replaceAll('/', '')}`;
+
+        const documentId: string = `${documentRequest.body.filename + documentRequest.body.filepath.replaceAll('/', '')}`;
 
         if (Documents.has(documentId)) {
             // Existing document case: return the existing record in the standard
@@ -31,21 +31,21 @@ export function createDocument(documentRequest : Request): ApiResponse {
             return result;
         }
 
-    const newDoc : Document = {
-           documentId : documentId,
-           uploadedBy : documentRequest.user.email,
-           uploadedAt : new Date()
-    }
+        const newDoc: Document = {
+            documentId: documentId,
+            uploadedBy: documentRequest.user.email,
+            uploadedAt: new Date()
+        }
 
-    Documents.set(newDoc.documentId,newDoc);
+        Documents.set(newDoc.documentId, newDoc);
 
-    const result : ApiResponse = {
-                status: RESPONSE_STATUS.SUCCESS,
-                message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
-                data: newDoc,
-    }
+        const result: ApiResponse = {
+            status: RESPONSE_STATUS.SUCCESS,
+            message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
+            data: newDoc,
+        }
 
-    return result;
+        return result;
 
     } catch (err) {
         // Re-throw the original error so the controller receives the actual failure.
@@ -53,7 +53,8 @@ export function createDocument(documentRequest : Request): ApiResponse {
     }
 }
 
-export function deleteDocumentById(documentId : string): ApiResponse {
+export function deleteDocumentById(documentId: string): ApiResponse {
+
     // Delete the document when it exists and return a standard ApiResponse.
     if (Documents.has(documentId)) {
         Documents.delete(documentId);
@@ -123,4 +124,33 @@ export function updateDocument(documentId: string, filename: string, filepath: s
         data: updatedDocument,
     };
     return result;
+}
+
+export function documentOwnershipCheck(documentRequest: Request, id: string) {
+    console.log("User accessing -> ", documentRequest.user?.email);
+
+    isDocumentExist(id)
+
+    const documenOwner = Documents.get(id)?.uploadedBy;
+
+    console.log("Document Owner -> ", documenOwner);
+    if(documentRequest.user?.email === documenOwner) {
+        return true;
+    }
+    const error = new Error() as customError;
+    error.statusCode = HTTP_STATUS_CODE.FORBIDDEN,
+    error.message = ERROR_MESSAGES.UNAUTHORIZED
+    throw error;
+    
+    }
+    
+
+export function isDocumentExist(id : string){
+    if(!Documents.has(id)){
+        const error = new Error() as customError;
+        error.statusCode = HTTP_STATUS_CODE.NOT_FOUND,
+        error.message = ERROR_MESSAGES.RESOURCE_NOT_FOUND
+        throw error;
+    }
+    return true;
 }

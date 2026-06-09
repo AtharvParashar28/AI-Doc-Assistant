@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { ApiResponse } from "../models/ApiResponse";
-import { HTTP_STATUS_CODE, ERROR_MESSAGES } from "../constants/statusCode";
+import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS } from "../constants/statusCode";
 import { customError } from "../models/customError";
-import { createDocument, deleteDocumentById, getDocumentById, getAllDocuments, updateDocument } from "../services/documentService";
+import { createDocument, deleteDocumentById, getDocumentById, getAllDocuments, updateDocument, documentOwnershipCheck } from "../services/documentService";
 
 export function CreateDocumentController(req : Request, res : Response<ApiResponse>, next : NextFunction){
     try {
@@ -18,7 +18,7 @@ export function CreateDocumentController(req : Request, res : Response<ApiRespon
 
     // No need to throw here: createDocument will either return a valid ApiResponse
     // or throw a service error that gets handled by the catch block.
-    res.json(result);
+    res.status(HTTP_STATUS_CODE.OK).json(result);
 
     } catch (err) {
         const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
@@ -39,14 +39,19 @@ export function documentById(req : Request, res : Response<ApiResponse>, next : 
             return next(error);
         }
 
-        // Call service to fetch the document; service throws if not found.
-        const result = getDocumentById(id);
+        // Check if user is authorized to edit requested document or not
 
-        return res.status(HTTP_STATUS_CODE.OK).json(result);
-    } catch (err) {
-        const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
-        error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
-        return next(error);
+        console.log("Checking owner-ship")
+        if(documentOwnershipCheck(req,id)){
+             // Call service to fetch the document; service throws if not found.
+            const result : ApiResponse = getDocumentById(id);
+            return res.status(HTTP_STATUS_CODE.OK).json(result);
+        }
+              
+        }
+
+    catch (err) {
+        return next(err);
     }
 }
 
@@ -59,7 +64,7 @@ export function documents(req : Request, res : Response<ApiResponse>, next : Nex
     } catch (err) {
         const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
         error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
-        return next(error);
+        return next(err);
     }
 }
 
@@ -81,9 +86,7 @@ export function deleteDocumentController(req : Request, res : Response<ApiRespon
         res.status(HTTP_STATUS_CODE.OK).json(result);
 
     } catch (err) {
-        const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
-        error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
-        return next(error);
+        return next(err);
     }
 }
 
@@ -111,8 +114,6 @@ export function updateDocumentById(req : Request, res : Response<ApiResponse>, n
 
         return res.status(HTTP_STATUS_CODE.OK).json(result);
     } catch (err) {
-        const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
-        error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
-        return next(error);
+        return next(err);
     }
 }
