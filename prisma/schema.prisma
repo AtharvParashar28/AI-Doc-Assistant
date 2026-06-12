@@ -1,7 +1,9 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Learning note:
+// 1. Every model represents one database table, and every field needs a type.
+// 2. Foreign keys use two fields: a scalar column like uploadedBy, and a relation field like user.
+// 3. The relation syntax is fields: [localForeignKey], references: [targetPrimaryKey].
+// 4. Use camelCase because Prisma generates TypeScript properties from these names.
+// 5. Use enums for controlled values like document type and message role, and numbers for counts/sizes.
 
 generator client {
   provider = "prisma-client"
@@ -12,4 +14,61 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id        String     @id @default(uuid())
+  name      String
+  email     String     @unique
+  password  String
+  documents Document[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
 
+model Document {
+  id         String       @id @default(uuid())
+  fileName   String       @unique
+  blobUrl    String
+  type       DocumentType
+  uploadedBy String
+  user       User         @relation(fields: [uploadedBy], references: [id])
+  chats      Chat[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([uploadedBy])
+}
+
+model Chat {
+  id         String    @id @default(uuid())
+  documentId String
+  document   Document  @relation(fields: [documentId], references: [id])
+  title      String
+  messages   Message[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([documentId])
+}
+
+model Message {
+  id        String      @id @default(uuid())
+  chatId    String
+  chat      Chat        @relation(fields: [chatId], references: [id])
+  role      MessageRole
+  content   String
+  tokenUsed Int? 
+  createdAt DateTime    @default(now())
+
+  @@index([chatId])
+}
+
+enum DocumentType {
+  PDF
+  DOCX
+  TXT
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
