@@ -1,18 +1,15 @@
 import { NextFunction, Request, Response } from "express";
 import { ApiResponse } from "../models/ApiResponse";
-import { createUser, loginUser } from "../services/createUser";
-import { Users } from "../models/Users";
+import { createUser, loginUser, getUserbyID } from "../services/createUser";
 import { customError } from "../models/customError";
 import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/statusCode";
-
 
 export async function signup(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     const payload = req.body;
 
     try {
-
-        if (!payload.email || !payload.password) {
-            const error = new Error(ERROR_MESSAGES.INVALID_CREDENTIALS) as customError;
+        if (!payload.email || !payload.password || !payload.name) {
+            const error = new Error(ERROR_MESSAGES.MISSING_FIELDS) as customError;
             error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
             throw error;
         }
@@ -26,18 +23,16 @@ export async function signup(req: Request, res: Response<ApiResponse>, next: Nex
         });
 
     } catch (err) {
-        const error = new Error(ERROR_MESSAGES.INVALID_CREDENTIALS) as customError;
-        error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
-        next(error);
+        next(err);
     }
 }
 
-export async function login(req: Request, res: Response<ApiResponse>) {
+export async function login(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     const payload = req.body;
     try {
 
         if (!payload.email || !payload.password) {
-            const error = new Error(ERROR_MESSAGES.INVALID_CREDENTIALS) as customError;
+            const error = new Error(ERROR_MESSAGES.MISSING_FIELDS) as customError;
             error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
             throw error;
         }
@@ -50,24 +45,24 @@ export async function login(req: Request, res: Response<ApiResponse>) {
             data: { token },
         });
     } catch (err) {
-        const error = new Error(ERROR_MESSAGES.INVALID_EMAIL_OR_PASSWORD) as customError;
-        error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
-        throw error;
+        next(err);
     }
 }
 
 export async function getCurrentUser(req: Request, res: Response<ApiResponse>, next : NextFunction) {
     try {
-        const email = req.user?.email;
+        // req.user -> extended user object => {userId , email}
+        const id = req.user?.userId;
 
-        if (!email) {
+        if (!id) {
             const error = new Error(ERROR_MESSAGES.INVALID_TOKEN_PAYLOAD) as customError;
             error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
             throw error;
         }
 
-        const user = Users.get(email);
-        if (!user) {
+        const currerntUser = await getUserbyID(id);
+
+        if (!currerntUser) {
             const error = new Error(ERROR_MESSAGES.USER_NOT_FOUND) as customError;
             error.statusCode = HTTP_STATUS_CODE.NOT_FOUND;
             throw error;
@@ -76,9 +71,7 @@ export async function getCurrentUser(req: Request, res: Response<ApiResponse>, n
         return res.status(HTTP_STATUS_CODE.OK).json({
             status: RESPONSE_STATUS.SUCCESS,
             message: SUCCESS_MESSAGES.USER_FETCHED,
-            data: {
-                email: user.email,
-            },
+            data: currerntUser
         });
     } catch (error) {
         next(error)
