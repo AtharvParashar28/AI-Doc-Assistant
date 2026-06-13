@@ -1,51 +1,29 @@
-import { Request } from "express";
-import { ApiResponse } from "../models/ApiResponse";
-import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/statusCode";
+import { HTTP_STATUS_CODE, ERROR_MESSAGES } from "../constants/statusCode";
 import { customError } from "../models/customError";
-import { Document } from "../models/Document.model";
-import { Documents } from "../models/Documents";
+import prisma from "../config/prisma";
+import { DocumentType } from "../generated/prisma/enums";
 
-export function createDocument(documentRequest : Request): ApiResponse {
+export type CreateDocumentPayload = {
+    fileName: string;
+    blobUrl: string;
+    type: DocumentType;
+    uploadedBy: string;
+}
+
+export type UpdateDocumentPayload = {
+    fileName?: string;
+    blobUrl?: string;
+    type?: DocumentType;
+}
+
+export async function createDocument(newDocument : CreateDocumentPayload) {
     try {
-        const error = new Error() as customError;
 
-        // Ensure the request is authenticated and `req.user` is available.
-        if (!documentRequest.user) {
-            error.message = ERROR_MESSAGES.INVALID_TOKEN_PAYLOAD;
-            error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
-            throw error;
-        }
+    const document = await prisma.document.create({
+            data : newDocument
+    })
 
-    
-    const documentId : string = `${documentRequest.body.filename + documentRequest.body.filepath.replaceAll('/', '')}`;
-
-        if (Documents.has(documentId)) {
-            // Existing document case: return the existing record in the standard
-            // ApiResponse shape rather than creating a duplicate.
-            const existing = Documents.get(documentId)!;
-            const result: ApiResponse = {
-                status: RESPONSE_STATUS.SUCCESS,
-                message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
-                data: existing,
-            };
-            return result;
-        }
-
-    const newDoc : Document = {
-           documentId : documentId,
-           uploadedBy : documentRequest.user.email,
-           uploadedAt : new Date()
-    }
-
-    Documents.set(newDoc.documentId,newDoc);
-
-    const result : ApiResponse = {
-                status: RESPONSE_STATUS.SUCCESS,
-                message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
-                data: newDoc,
-    }
-
-    return result;
+    return document;
 
     } catch (err) {
         // Re-throw the original error so the controller receives the actual failure.
@@ -53,74 +31,84 @@ export function createDocument(documentRequest : Request): ApiResponse {
     }
 }
 
-export function deleteDocumentById(documentId : string): ApiResponse {
-    // Delete the document when it exists and return a standard ApiResponse.
-    if (Documents.has(documentId)) {
-        Documents.delete(documentId);
-        const result: ApiResponse = {
-            status: RESPONSE_STATUS.SUCCESS,
-            message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
-        };
-        return result;
-    }
-
-    // If the document does not exist, throw a not-found error.
-    const error = new Error(ERROR_MESSAGES.RESOURCE_NOT_FOUND) as customError;
-    error.statusCode = HTTP_STATUS_CODE.NOT_FOUND;
-    throw error;
-}
-
-export function getDocumentById(documentId: string): ApiResponse {
+export async function deleteDocumentById(documentId : string, userId: string){
     // Retrieve a single document by ID.
-    if (!Documents.has(documentId)) {
+
+    const existingDoc = await getDocumentByIdForUser(documentId, userId);
+
+    if (!existingDoc) {
         // Document not found: throw a not-found error.
         const error = new Error(ERROR_MESSAGES.RESOURCE_NOT_FOUND) as customError;
         error.statusCode = HTTP_STATUS_CODE.NOT_FOUND;
         throw error;
     }
 
-    const document = Documents.get(documentId)!;
-    const result: ApiResponse = {
-        status: RESPONSE_STATUS.SUCCESS,
-        message: SUCCESS_MESSAGES.DATA_RETRIEVED,
-        data: document,
-    };
-    return result;
+    // If the document exist, delete
+    const deletedDoc = await prisma.document.delete({
+        where :{
+            id : documentId
+        }
+    })
+
+    return deletedDoc;
+    
 }
 
-export function getAllDocuments(): ApiResponse {
+export async function getDocumentById(documentId: string) {
+    // Retrieve a single document by ID.
+    const document = await prisma.document.findUnique({
+        where : {
+            id : documentId
+        }
+    })
+
+    return document;
+}
+
+export async function getDocumentByIdForUser(documentId: string, userId: string) {
+    const document = await prisma.document.findFirst({
+        where: {
+            id: documentId,
+            uploadedBy: userId
+        }
+    })
+
+    return document;
+}
+
+export async function getAllDocuments(userId : string) {
     // Retrieve all documents as an array.
-    const allDocuments = Array.from(Documents.values());
-    const result: ApiResponse = {
-        status: RESPONSE_STATUS.SUCCESS,
-        message: SUCCESS_MESSAGES.DATA_RETRIEVED,
-        data: allDocuments,
-    };
-    return result;
+    const allDocuments = await prisma.document.findMany({
+        where : {
+            uploadedBy : userId
+        }
+    });
+
+    return allDocuments;
 }
 
-export function updateDocument(documentId: string, filename: string, filepath: string, userEmail: string): ApiResponse {
-    // Update an existing document's metadata.
-    if (!Documents.has(documentId)) {
+export async function updateDocument(documentId: string, updatedPayload : UpdateDocumentPayload, userId: string){
+    // Retrieve a single document by ID.
+    // const existingDoc = await existingDocument({id : documentId});
+
+    const existingDoc = await getDocumentByIdForUser(documentId, userId);
+
+    if (!existingDoc) {
         // Document not found: throw a not-found error.
         const error = new Error(ERROR_MESSAGES.RESOURCE_NOT_FOUND) as customError;
         error.statusCode = HTTP_STATUS_CODE.NOT_FOUND;
         throw error;
     }
 
-    const existingDocument = Documents.get(documentId)!;
-    const updatedDocument: Document = {
-        ...existingDocument,
-        uploadedBy: userEmail,
-        uploadedAt: new Date(),
-    };
 
-    Documents.set(documentId, updatedDocument);
+    console.log(updatedPayload);
+    // If the document exist, delete
+    const updatedDoc = await prisma.document.update({
+        where :{
+            id : documentId
+        },
+        data : updatedPayload
+    })
 
-    const result: ApiResponse = {
-        status: RESPONSE_STATUS.SUCCESS,
-        message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
-        data: updatedDocument,
-    };
-    return result;
+    return updatedDoc;
 }

@@ -5,6 +5,5 @@ import { getCurrentUser } from "../controllers/authController";
 const route = Router();
 
 // Protected route: returns information about the authenticated user
-route.get("/users", authMiddleware, getCurrentUser);
-
+route.get("/user/:id", authMiddleware, getCurrentUser);
 export default route;

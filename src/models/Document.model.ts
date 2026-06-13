@@ -1,5 +1,6 @@
 export interface Document {
-    documentId : string;
+    fileName : string,
+    blobUrl : string,
+    type : string,
     uploadedBy : string;
-    uploadedAt : Date;
 }

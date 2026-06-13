@@ -1,9 +1,8 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 
 export interface JwtPayload {
-  email: string;
-  // If you later add a stable identifier, put it here
-  // userId?: string;
+  userId: string;
+  email : string
 }
 
 const expiresIn = process.env.JWT_EXPIRES_IN || '1h';

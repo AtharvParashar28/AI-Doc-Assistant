@@ -1,33 +1,56 @@
 import { NextFunction, Request, Response } from "express";
 import { ApiResponse } from "../models/ApiResponse";
-import { HTTP_STATUS_CODE, ERROR_MESSAGES } from "../constants/statusCode";
+import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/statusCode";
 import { customError } from "../models/customError";
-import { createDocument, deleteDocumentById, getDocumentById, getAllDocuments, updateDocument } from "../services/documentService";
+import { createDocument, getAllDocuments, getDocumentByIdForUser, deleteDocumentById, updateDocument } from "../services/documentService";
+import { DocumentType } from "../generated/prisma/enums";
 
-export function CreateDocumentController(req : Request, res : Response<ApiResponse>, next : NextFunction){
+export async function CreateDocumentController(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     try {
-        if(!req.body || !req.body.filepath || !req.body.filename){
-        const error = new Error(ERROR_MESSAGES.MISSING_FIELDS) as customError;
-        error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
-        return next(error);
-    }
+         // Ensure the request is authenticated and `req.user` is available.
+        if (!req.user) {
+            const error = new Error() as customError;
+            error.message = ERROR_MESSAGES.JWT_REQUIRED;
+            error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
+            throw error;
+        }
 
-    // Calling document creation service; the service returns an ApiResponse
-    // for both new documents and already-existing documents.
-    const result = createDocument(req);
+        if (!req.body || !req.body.blobUrl || !req.body.filename || !req.body.type) {
+            const error = new Error(ERROR_MESSAGES.MISSING_FIELDS) as customError;
+            error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
+            return next(error);
+        }
 
-    // No need to throw here: createDocument will either return a valid ApiResponse
-    // or throw a service error that gets handled by the catch block.
-    res.json(result);
+        const fileObject = req.body;
+        const documentType = fileObject.type;
+
+        if (!Object.values(DocumentType).includes(documentType)) {
+            const error = new Error(ERROR_MESSAGES.MISSING_FIELDS) as customError;
+            error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
+            return next(error);
+        }
+
+        const newDoc = {
+                   fileName : fileObject.filename,
+                   blobUrl : fileObject.blobUrl,
+                   type : documentType,
+                   uploadedBy : req.user.userId,
+            }
+
+        const result = await createDocument(newDoc);
+
+        res.status(HTTP_STATUS_CODE.OK).json({
+                status: RESPONSE_STATUS.SUCCESS,
+                message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
+                data: result,
+    });
 
     } catch (err) {
-        const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
-        error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
-        return next(error);
+        return next(err);
     }
 }
 
-export function documentById(req : Request, res : Response<ApiResponse>, next : NextFunction) {
+export async function GetDocumentbyID(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     try {
         // Normalize the ID from route parameters (may be string or array).
         const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
@@ -39,23 +62,51 @@ export function documentById(req : Request, res : Response<ApiResponse>, next : 
             return next(error);
         }
 
+        // Check if user object is present in request body or not
+        if (!req.user || !req.user.email || !req.user.userId) {
+            const error = new Error(ERROR_MESSAGES.UNAUTHORIZED) as customError;
+            error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
+            return next(error);
+        }
+
         // Call service to fetch the document; service throws if not found.
-        const result = getDocumentById(id);
+        const document = await getDocumentByIdForUser(id, req.user.userId);
 
-        return res.status(HTTP_STATUS_CODE.OK).json(result);
+        if (!document) {
+            const error = new Error(ERROR_MESSAGES.RESOURCE_NOT_FOUND) as customError;
+            error.statusCode = HTTP_STATUS_CODE.NOT_FOUND;
+            return next(error);
+        }
+
+        return res.status(HTTP_STATUS_CODE.OK).json({
+            status: RESPONSE_STATUS.SUCCESS,
+            message: SUCCESS_MESSAGES.DATA_RETRIEVED,
+            data: document,
+
+        });
     } catch (err) {
-        const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
-        error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
-        return next(error);
+        return next(err);
     }
 }
 
-export function documents(req : Request, res : Response<ApiResponse>, next : NextFunction) {
+export async function GetDocumentsController(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     try {
-        // Call service to fetch all documents.
-        const result = getAllDocuments();
+        // Check if user object is present in request body or not
+        if (!req.user || !req.user.email || !req.user.userId) {
+            const error = new Error(ERROR_MESSAGES.UNAUTHORIZED) as customError;
+            error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
+            return next(error);
+        }
 
-        return res.status(HTTP_STATUS_CODE.OK).json(result);
+        // Call service to fetch all documents owned by requesting user
+        const documents = await getAllDocuments(req.user.userId);
+
+        return res.status(HTTP_STATUS_CODE.OK).json({
+            status: RESPONSE_STATUS.SUCCESS,
+            message: SUCCESS_MESSAGES.DATA_RETRIEVED,
+            data: documents,
+        });
+
     } catch (err) {
         const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
         error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
@@ -63,7 +114,7 @@ export function documents(req : Request, res : Response<ApiResponse>, next : Nex
     }
 }
 
-export function deleteDocumentController(req : Request, res : Response<ApiResponse>, next : NextFunction) {
+export async function DeleteDocumentController(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     try {
         // If it is an array use the first element otherwise only string
         const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
@@ -74,45 +125,56 @@ export function deleteDocumentController(req : Request, res : Response<ApiRespon
             return next(error);
         }
 
-        const result = deleteDocumentById(id);
+        // Check if user object is present in request body or not
+        if (!req.user || !req.user.email || !req.user.userId) {
+            const error = new Error(ERROR_MESSAGES.UNAUTHORIZED) as customError;
+            error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
+            return next(error);
+        }
+
+        const result = await deleteDocumentById(id, req.user.userId);
 
         // deleteDocumentById throws if the document is not found, so a result
         // here means deletion succeeded and can be returned directly.
-        res.status(HTTP_STATUS_CODE.OK).json(result);
+        return res.status(HTTP_STATUS_CODE.OK).json({
+            status: RESPONSE_STATUS.SUCCESS,
+            message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
+            data: result,
+        })
 
     } catch (err) {
-        const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
-        error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
-        return next(error);
+        return next(err);
     }
 }
 
-export function updateDocumentById(req : Request, res : Response<ApiResponse>, next : NextFunction) {
+export async function UpdateDocumentController(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     try {
         // Normalize the ID from route parameters.
         const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
         // Validate required fields: ID, filename, and filepath.
-        if (!id || !req.body || typeof req.body.filename !== 'string' || typeof req.body.filepath !== 'string') {
+        if (!id || !req.body || typeof req.body.fileName !== 'string' || typeof req.body.blobUrl !== 'string') {
             const error = new Error(ERROR_MESSAGES.MISSING_FIELDS) as customError;
             error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
             return next(error);
         }
 
         // Ensure the request is authenticated.
-        if (!req.user) {
+        if (!req.user || !req.user.userId) {
             const error = new Error(ERROR_MESSAGES.INVALID_TOKEN_PAYLOAD) as customError;
             error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
             return next(error);
         }
 
         // Call service to update the document; service throws if not found.
-        const result = updateDocument(id, req.body.filename, req.body.filepath, req.user.email);
+        const result = await updateDocument(id, req.body, req.user.userId);
 
-        return res.status(HTTP_STATUS_CODE.OK).json(result);
+        return res.status(HTTP_STATUS_CODE.OK).json({
+            status: RESPONSE_STATUS.SUCCESS,
+            message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
+            data: result,
+        })
     } catch (err) {
-        const error = new Error(ERROR_MESSAGES.SOMETHING_WENT_WRONG) as customError;
-        error.statusCode = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
-        return next(error);
+        return next(err);
     }
 }
