@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { UserData } from '../models/UserData';
+import { UserData } from '../models/User.model';
 import { generateToken } from './authService';
 import { customError } from '../models/customError';
 import { HTTP_STATUS_CODE, ERROR_MESSAGES } from '../constants/statusCode';
