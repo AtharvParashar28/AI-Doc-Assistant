@@ -37,6 +37,15 @@ export const ERROR_MESSAGES = {
   // Validation errors
   INVALID_CREDENTIALS: 'Invalid credentials',
   MISSING_FIELDS: 'Required fields are missing',
+  NAME_REQUIRED: "Name is required",
+  NAME_MIN_LENGTH: "Name must be at least 2 characters",
+  NAME_MAX_LENGTH: "Name cannot exceed 50 characters",
+  EMAIL_REQUIRED: "Email is required",
+  EMAIL_INVALID: "Invalid email format",
+  PASSWORD_REQUIRED: "Password is required",
+  PASSWORD_MIN_LENGTH: "Password must be at least 8 characters",
+  PASSWORD_MAX_LENGTH: "Password cannot exceed 100 characters",
+  INVALID_REQUEST_BODY: "Invalid request body",
 
   // Resource errors
   RESOURCE_ALREADY_EXISTS: 'Resource already exists',
