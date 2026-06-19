@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { ApiResponse } from "../models/ApiResponse";
 import { createUser, loginUser, getUserbyID } from "../services/createUser";
 import { customError } from "../models/customError";
-import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/statusCode";
+import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/apiResponse";
 
 export async function signup(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     const payload = req.body;

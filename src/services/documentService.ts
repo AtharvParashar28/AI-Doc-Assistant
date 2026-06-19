@@ -1,4 +1,4 @@
-import { HTTP_STATUS_CODE, ERROR_MESSAGES } from "../constants/statusCode";
+import { HTTP_STATUS_CODE, ERROR_MESSAGES } from "../constants/apiResponse";
 import { customError } from "../models/customError";
 import prisma from "../config/prisma";
 import { DocumentType } from "../generated/prisma/enums";
@@ -76,14 +76,25 @@ export async function getDocumentByIdForUser(documentId: string, userId: string)
     return document;
 }
 
-export async function getAllDocuments(userId : string) {
-    // Retrieve all documents as an array.
+export async function getAllDocuments(userId : string, page : number, limit : number, search : string) {
+
+    // Calculating skip 
+    const skip = (page - 1) * limit;
+
     const allDocuments = await prisma.document.findMany({
         where : {
-            uploadedBy : userId
-        }
+            uploadedBy : userId,
+            fileName : {
+                contains : search,
+                mode : "insensitive"
+            }
+        },
+      
+        skip : skip,
+        take : limit
     });
 
+    console.log(allDocuments.map(doc => doc.fileName));
     return allDocuments;
 }
 

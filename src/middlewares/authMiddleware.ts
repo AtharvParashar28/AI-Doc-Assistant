@@ -1,7 +1,7 @@
 import { verifyToken } from "../services/authService";
 import { Request, Response, NextFunction } from "express";
 import { ApiResponse } from "../models/ApiResponse";
-import { HTTP_STATUS_CODE, ERROR_MESSAGES } from "../constants/statusCode";
+import { HTTP_STATUS_CODE, ERROR_MESSAGES } from "../constants/apiResponse";
 import { customError } from "../models/customError";
 
 // interface CustomAuthError extends Error {
