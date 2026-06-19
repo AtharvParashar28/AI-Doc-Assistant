@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import { UserData } from '../models/User.model';
 import { generateToken } from './authService';
 import { customError } from '../models/customError';
-import { HTTP_STATUS_CODE, ERROR_MESSAGES } from '../constants/statusCode';
+import { HTTP_STATUS_CODE, ERROR_MESSAGES } from '../constants/apiResponse';
 import prisma from '../config/prisma';
 
 export async function createUser(user: UserData) {

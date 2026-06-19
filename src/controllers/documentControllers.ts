@@ -1,13 +1,17 @@
 import { NextFunction, Request, Response } from "express";
 import { ApiResponse } from "../models/ApiResponse";
-import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/statusCode";
+import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/apiResponse";
 import { customError } from "../models/customError";
 import { createDocument, getAllDocuments, getDocumentByIdForUser, deleteDocumentById, updateDocument } from "../services/documentService";
 import { DocumentType } from "../generated/prisma/enums";
 
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 10;
+const DEFAULT_SEARCH = "";
+
 export async function CreateDocumentController(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     try {
-         // Ensure the request is authenticated and `req.user` is available.
+
         if (!req.user) {
             const error = new Error() as customError;
             error.message = ERROR_MESSAGES.JWT_REQUIRED;
@@ -91,6 +95,10 @@ export async function GetDocumentbyID(req: Request, res: Response<ApiResponse>, 
 
 export async function GetDocumentsController(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     try {
+         const page = Number(req.query.page) || DEFAULT_PAGE;
+         const limit = Number(req.query.limit) || DEFAULT_LIMIT;
+         const search = (req.query.search as string)?.trim() || DEFAULT_SEARCH;
+         
         // Check if user object is present in request body or not
         if (!req.user || !req.user.email || !req.user.userId) {
             const error = new Error(ERROR_MESSAGES.UNAUTHORIZED) as customError;
@@ -99,7 +107,7 @@ export async function GetDocumentsController(req: Request, res: Response<ApiResp
         }
 
         // Call service to fetch all documents owned by requesting user
-        const documents = await getAllDocuments(req.user.userId);
+        const documents = await getAllDocuments(req.user.userId, page, limit, search);
 
         return res.status(HTTP_STATUS_CODE.OK).json({
             status: RESPONSE_STATUS.SUCCESS,

@@ -1,5 +1,5 @@
 import z from "zod";
-import { ERROR_MESSAGES } from "../constants/statusCode";
+import { ERROR_MESSAGES } from "../constants/apiResponse";
 
 export const signupSchema = z.object({
   name: z
