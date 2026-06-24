@@ -2,6 +2,8 @@ import { HTTP_STATUS_CODE, ERROR_MESSAGES } from "../constants/apiResponse";
 import { customError } from "../models/customError";
 import prisma from "../config/prisma";
 import { DocumentType } from "../generated/prisma/enums";
+import { Pagination } from "../models/ApiResponse";
+import { SortOrder } from "../generated/prisma/internal/prismaNamespace";
 
 export type CreateDocumentPayload = {
     fileName: string;
@@ -31,7 +33,7 @@ export async function createDocument(newDocument : CreateDocumentPayload) {
     }
 }
 
-export async function deleteDocumentById(documentId : string, userId: string){
+export async function deleteDocumentById(documentId : string, userId: string){ 
     // Retrieve a single document by ID.
 
     const existingDoc = await getDocumentByIdForUser(documentId, userId);
@@ -54,16 +56,16 @@ export async function deleteDocumentById(documentId : string, userId: string){
     
 }
 
-export async function getDocumentById(documentId: string) {
-    // Retrieve a single document by ID.
-    const document = await prisma.document.findUnique({
-        where : {
-            id : documentId
-        }
-    })
+// export async function getDocumentById(documentId: string) {
+//     // Retrieve a single document by ID.
+//     const document = await prisma.document.findUnique({
+//         where : {
+//             id : documentId
+//         }
+//     })
 
-    return document;
-}
+//     return document;
+// }
 
 export async function getDocumentByIdForUser(documentId: string, userId: string) {
     const document = await prisma.document.findFirst({
@@ -76,28 +78,53 @@ export async function getDocumentByIdForUser(documentId: string, userId: string)
     return document;
 }
 
-export async function getAllDocuments(userId : string, page : number, limit : number, search : string) {
+export async function getAllDocuments(userId : string, Page : number, Limit : number, search : string, sortBy : string, SortOrder : string) {
 
     // Calculating skip 
-    const skip = (page - 1) * limit;
+    const skip = (Page - 1) * Limit;
 
     const allDocuments = await prisma.document.findMany({
+    
         where : {
             uploadedBy : userId,
             fileName : {
                 contains : search,
                 mode : "insensitive"
             }
+            
         },
-      
+        orderBy:{
+            [sortBy] : SortOrder
+        },
         skip : skip,
-        take : limit
+        take : Limit,
+        
+        
     });
 
-    console.log(allDocuments.map(doc => doc.fileName));
     return allDocuments;
 }
 
+export async function getPaginationMetadata ( userId : string, Page : number, Limit : number){
+    const skip = (Page - 1) * Limit;
+
+    const count = await prisma.document.count({
+        where : {
+            uploadedBy : userId
+        }
+    });
+
+    const pagination : Pagination = {
+        page : Page,
+        limit : Limit,
+        hasNextPage : (skip + Limit < count) ? true : false, 
+        hasPreviousPage : (skip > 0) ? true : false,
+        totalRecords : count,
+        totalPage : Math.ceil(count/Limit)
+    }
+
+    return pagination;
+}
 export async function updateDocument(documentId: string, updatedPayload : UpdateDocumentPayload, userId: string){
     // Retrieve a single document by ID.
     // const existingDoc = await existingDocument({id : documentId});

@@ -1,6 +1,7 @@
 import z from "zod";
 
-export const getDocumentsQuerySchema = z.object({
+export const getDocumentsQuerySchema = z
+.object({
   page: z.coerce
     .number()
     .int("Page must be an integer")
@@ -14,8 +15,23 @@ export const getDocumentsQuerySchema = z.object({
     .max(100, "Limit cannot exceed 100")
     .default(10),
 
-  search: z.string().trim().optional().default(""),
-});
+  search: z.string().trim().optional(),
+
+    sortBy: z
+    .enum(["createdAt", "updatedAt", "fileName"])
+    .default("createdAt"),
+
+  sortOrder: z
+    .enum(["asc", "desc"])
+    .default("desc"),
+}).refine(
+    (data) => !(data.sortOrder && !data.sortBy),
+    {
+      message: "sortBy is required when sortOrder is provided",
+      path: ["sortOrder"],
+    }
+  );
+
 
 export const getDocumentsParamSchema = z.object({
   id : z.uuid("Must be a valid document id")
