@@ -2,12 +2,14 @@ import { NextFunction, Request, Response } from "express";
 import { ApiResponse } from "../models/ApiResponse";
 import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/apiResponse";
 import { customError } from "../models/customError";
-import { createDocument, getAllDocuments, getDocumentByIdForUser, deleteDocumentById, updateDocument } from "../services/documentService";
+import { createDocument, getAllDocuments, getDocumentByIdForUser, deleteDocumentById, updateDocument, getPaginationMetadata } from "../services/documentService";
 import { DocumentType } from "../generated/prisma/enums";
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
 const DEFAULT_SEARCH = "";
+const DEFAULT_SORTBY = "createdAt";
+const DEFAULT_SORTORDER = "desc";
 
 export async function CreateDocumentController(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     try {
@@ -35,19 +37,19 @@ export async function CreateDocumentController(req: Request, res: Response<ApiRe
         }
 
         const newDoc = {
-                   fileName : fileObject.filename,
-                   blobUrl : fileObject.blobUrl,
-                   type : documentType,
-                   uploadedBy : req.user.userId,
-            }
+            fileName: fileObject.filename,
+            blobUrl: fileObject.blobUrl,
+            type: documentType,
+            uploadedBy: req.user.userId,
+        }
 
         const result = await createDocument(newDoc);
 
         res.status(HTTP_STATUS_CODE.OK).json({
-                status: RESPONSE_STATUS.SUCCESS,
-                message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
-                data: result,
-    });
+            status: RESPONSE_STATUS.SUCCESS,
+            message: SUCCESS_MESSAGES.OPERATION_SUCCESS,
+            data: result,
+        });
 
     } catch (err) {
         return next(err);
@@ -95,10 +97,14 @@ export async function GetDocumentbyID(req: Request, res: Response<ApiResponse>, 
 
 export async function GetDocumentsController(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     try {
-         const page = Number(req.query.page) || DEFAULT_PAGE;
-         const limit = Number(req.query.limit) || DEFAULT_LIMIT;
-         const search = (req.query.search as string)?.trim() || DEFAULT_SEARCH;
-         
+        const page = Number(req.query.page) || DEFAULT_PAGE;
+        const limit = Number(req.query.limit) || DEFAULT_LIMIT;
+        const search = (req.query.search as string) || DEFAULT_SEARCH;
+        const sortBy = (req.query.sortBy as string) || DEFAULT_SORTBY;
+        const sortOrder =
+            (req.query.sortOrder as "asc" | "desc") || DEFAULT_SORTORDER;
+
+
         // Check if user object is present in request body or not
         if (!req.user || !req.user.email || !req.user.userId) {
             const error = new Error(ERROR_MESSAGES.UNAUTHORIZED) as customError;
@@ -107,12 +113,14 @@ export async function GetDocumentsController(req: Request, res: Response<ApiResp
         }
 
         // Call service to fetch all documents owned by requesting user
-        const documents = await getAllDocuments(req.user.userId, page, limit, search);
+        const documents = await getAllDocuments(req.user.userId, page, limit, search, sortBy, sortOrder);
+        const paginationMetadata = await getPaginationMetadata(req.user.userId, page, limit);
 
         return res.status(HTTP_STATUS_CODE.OK).json({
             status: RESPONSE_STATUS.SUCCESS,
             message: SUCCESS_MESSAGES.DATA_RETRIEVED,
             data: documents,
+            pagination: (documents.length > 0) ? paginationMetadata : undefined
         });
 
     } catch (err) {
