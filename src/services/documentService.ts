@@ -56,17 +56,6 @@ export async function deleteDocumentById(documentId : string, userId: string){
     
 }
 
-// export async function getDocumentById(documentId: string) {
-//     // Retrieve a single document by ID.
-//     const document = await prisma.document.findUnique({
-//         where : {
-//             id : documentId
-//         }
-//     })
-
-//     return document;
-// }
-
 export async function getDocumentByIdForUser(documentId: string, userId: string) {
     const document = await prisma.document.findFirst({
         where: {

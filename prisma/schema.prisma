@@ -39,7 +39,7 @@ model Document {
 }
 
 model Chat {
-  id         String    @id @default(uuid())
+  id        String    @id @default(uuid()) 
   documentId String
   document   Document  @relation(fields: [documentId], references: [id])
   title      String

@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { ApiResponse } from "../models/ApiResponse";
-import { createUser, loginUser, getUsers } from "../services/createUser";
+import { createUser, loginUser, getUsers } from "../services/userService";
 import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/apiResponse";
 
 export async function userController(req: Request, res: Response<ApiResponse>, next: NextFunction) {
