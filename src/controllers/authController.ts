@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { ApiResponse } from "../models/ApiResponse";
-import { createUser, loginUser, getUserbyID } from "../services/createUser";
+import { createUser, loginUser, getUserbyID } from "../services/userService";
 import { customError } from "../models/customError";
 import { HTTP_STATUS_CODE, ERROR_MESSAGES, RESPONSE_STATUS, SUCCESS_MESSAGES } from "../constants/apiResponse";
 

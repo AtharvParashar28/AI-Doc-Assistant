@@ -7,6 +7,8 @@ import singupRoute from './routes/signupRoutes';
 import authRoute from './routes/authRoutes';
 import usersRoute from './routes/usersRoutes';
 import documentRoute from './routes/documentRoutes';
+import aiRoute from './routes/aiRoutes';
+
 import { globalErrors } from './middlewares/errorMiddleware';
 
 const app = express();
@@ -18,10 +20,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes (to be mounted)
+
+// user and authentication
 app.use('/api/auth', singupRoute);
 app.use('/api/auth', authRoute);
 app.use('/api', usersRoute);
+
+// Document routes
 app.use('/api', documentRoute);
+
+// AI routes
+app.use('/api', aiRoute);
 
 // Global error handler
 app.use(globalErrors);

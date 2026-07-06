@@ -4,10 +4,6 @@ import { ApiResponse } from "../models/ApiResponse";
 import { HTTP_STATUS_CODE, ERROR_MESSAGES } from "../constants/apiResponse";
 import { customError } from "../models/customError";
 
-// interface CustomAuthError extends Error {
-//   statusCode?: number;
-// }
-
 /**
  * Authentication middleware
  * - Parses `Authorization` header expecting `Bearer <token>`
@@ -17,7 +13,7 @@ import { customError } from "../models/customError";
 export function authMiddleware(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     try {
       const authHeader = req.headers.authorization;
-
+      console.log("authheader ", authHeader);
       if (!authHeader) {
         const error = new Error(ERROR_MESSAGES.UNAUTHORIZED) as customError;
         error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
