@@ -10,4 +10,5 @@ const route = Router();
 route.post('/chat/:chatId/message', authMiddleware, validate(getChatParamsSchema,"query"), validate(generateSchema, "body"), messageController);
 route.post('/document/:documentId/chat',authMiddleware, validate(getDocumentsParamSchema,"query"), chatController);
 
+
 export default route;

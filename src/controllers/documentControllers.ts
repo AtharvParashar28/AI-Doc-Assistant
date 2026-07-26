@@ -11,6 +11,12 @@ const DEFAULT_SEARCH = "";
 const DEFAULT_SORTBY = "createdAt";
 const DEFAULT_SORTORDER = "desc";
 
+const MIME_TYPE_TO_DOCUMENT_TYPE: Record<string, DocumentType> = {
+    "application/pdf": DocumentType.PDF,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": DocumentType.DOCX,
+    "text/plain": DocumentType.TXT,
+};
+
 export async function CreateDocumentController(req: Request, res: Response<ApiResponse>, next: NextFunction) {
     try {
 
@@ -21,29 +27,23 @@ export async function CreateDocumentController(req: Request, res: Response<ApiRe
             throw error;
         }
 
-        if (!req.body || !req.body.blobUrl || !req.body.filename || !req.body.type) {
-            const error = new Error(ERROR_MESSAGES.MISSING_FIELDS) as customError;
+        console.log(`request payload -> ${req.file?.originalname}`);
+
+        if (!req.file) {
+            const error = new Error() as customError;
+            error.message = ERROR_MESSAGES.MISSING_FILE;
             error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
-            return next(error);
+            throw error;
         }
 
-        const fileObject = req.body;
-        const documentType = fileObject.type;
-
-        if (!Object.values(DocumentType).includes(documentType)) {
-            const error = new Error(ERROR_MESSAGES.MISSING_FIELDS) as customError;
-            error.statusCode = HTTP_STATUS_CODE.BAD_REQUEST;
-            return next(error);
-        }
-
-        const newDoc = {
-            fileName: fileObject.filename,
-            blobUrl: fileObject.blobUrl,
-            type: documentType,
+        const newDocpayload = {
+            fileName: req.file.originalname,
+            type: MIME_TYPE_TO_DOCUMENT_TYPE[req.file.mimetype] as DocumentType,
             uploadedBy: req.user.userId,
-        }
+            fileBuffer : req.file.buffer 
+        };
 
-        const result = await createDocument(newDoc);
+        const result = await createDocument(newDocpayload);
 
         res.status(HTTP_STATUS_CODE.OK).json({
             status: RESPONSE_STATUS.SUCCESS,
