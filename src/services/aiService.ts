@@ -2,6 +2,7 @@ import axios from "axios"
 import prisma from "../config/prisma"
 import { MessageRole } from "../generated/prisma/enums"
 
+// Better prompt -> Objective -> Context -> Constraint -> Output format
 type promptPayload = {
     model: String
     messages: {
@@ -26,8 +27,7 @@ type messagePayload = {
     content: string
 }
 
-
-export async function generateResponse(prompt: string, chatId : string, userId : string) {
+export async function generateResponse(prompt: string, chatId: string, userId: string) {
     const model = process.env.MODEL!;
     const endpoint = process.env.OLLAMA_ENDPOINT!;
     const temp = Number(process.env.TEMPERATURE!);
@@ -37,10 +37,10 @@ export async function generateResponse(prompt: string, chatId : string, userId :
     // store new message and get chat history
     // build required body for ollama
 
-    const userMessage : messagePayload = {
-        chatId : chatId,
-        role : MessageRole.USER,
-        content : prompt
+    const userMessage: messagePayload = {
+        chatId: chatId,
+        role: MessageRole.USER,
+        content: prompt
     }
 
 
@@ -48,7 +48,7 @@ export async function generateResponse(prompt: string, chatId : string, userId :
 
     const context = await getChatHistory(chatId, userId);
 
-console.log(context);
+    console.log(context);
 
 
 
@@ -70,10 +70,10 @@ console.log(context);
         console.log(ollamaResponse.data);
 
         // Store newly generated message
-        const assistantMessage : messagePayload = {
-            chatId : chatId,
-            role : MessageRole.ASSISTANT,
-            content : ollamaResponse.data.message.content
+        const assistantMessage: messagePayload = {
+            chatId: chatId,
+            role: MessageRole.ASSISTANT,
+            content: ollamaResponse.data.message.content
         }
 
         await storeMessages(assistantMessage);
@@ -85,37 +85,37 @@ console.log(context);
 
 }
 
-export async function getChatHistory(chatId: string, userId : string) {
+export async function getChatHistory(chatId: string, userId: string) {
     const messages = await prisma.message.findMany({
         where: {
             chatId: chatId,
-            chat : {
-                document : {
-                    uploadedBy : userId
+            chat: {
+                document: {
+                    uploadedBy: userId
                 }
             }
         },
-        select : {
-            role : true,
-            content : true
+        select: {
+            role: true,
+            content: true
         },
-        orderBy : {
-            createdAt : "desc"
+        orderBy: {
+            createdAt: "desc"
         },
-        take : 20
+        take: 20
 
     })
 
     console.log("chat history -> ", messages);
 
-     return messages.reverse().map((message) => ({
+    return messages.reverse().map((message) => ({
         role: message.role.toLowerCase(),
         content: message.content
     }));
 
 }
 
-export async function createChat(newChat: chatPayload, documentId : string) {
+export async function createChat(newChat: chatPayload, documentId: string) {
     // Db call to store chat 
     // It should only run once per chat
 

@@ -47,6 +47,13 @@ export const ERROR_MESSAGES = {
   PASSWORD_MAX_LENGTH: "Password cannot exceed 100 characters",
   INVALID_REQUEST_BODY: "Invalid request body",
 
+  // Document upload erros
+  DOCUMENT_STORAGE_UPLOAD_FAILED: "Failed to upload document to storage.",
+  DOCUMENT_STORAGE_DELETE_FAILED: "Failed to delete document from storage.",
+  DOCUMENT_SAVE_FAILED: "Failed to save document.",
+  DOCUMENT_NOT_FOUND: "Document not found.",
+  MISSING_FILE: "File is required",
+
   // Resource errors
   RESOURCE_ALREADY_EXISTS: 'Resource already exists',
   RESOURCE_NOT_FOUND: 'Resource does not exist',
@@ -59,6 +66,7 @@ export const ERROR_MESSAGES = {
   // Server errors
   INTERNAL_SERVER_ERROR: 'Internal Server Error',
   SOMETHING_WENT_WRONG: 'Something went wrong',
+
 
   // Token errors
   INVALID_TOKEN_PAYLOAD: 'Invalid token payload',

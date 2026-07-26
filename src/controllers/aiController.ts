@@ -38,8 +38,8 @@ export async function chatController(req: Request, res: Response<ApiResponse>, n
         }
 
         const chat = {
-            documentId : documentId,
-            title : req.body.title
+            documentId: documentId,
+            title: req.body.title
         }
 
         const newChat = await createChat(chat, documentId);
@@ -63,12 +63,12 @@ export async function messageController(req: Request, res: Response<ApiResponse>
         // Send user given prompt to geneare service.
         // req -> prompt + chatId
         try {
-             // Check if user object is present in request body or not
-        if (!req.user || !req.user.email || !req.user.userId) {
-            const error = new Error(ERROR_MESSAGES.UNAUTHORIZED) as customError;
-            error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
-            return next(error);
-        }
+            // Check if user object is present in request body or not
+            if (!req.user || !req.user.email || !req.user.userId) {
+                const error = new Error(ERROR_MESSAGES.UNAUTHORIZED) as customError;
+                error.statusCode = HTTP_STATUS_CODE.UNAUTHORIZED;
+                return next(error);
+            }
 
             const prompt = req.body.content;
             const chatId = Array.isArray(req.params.chatId) ? req.params[0] : req.params.chatId;
