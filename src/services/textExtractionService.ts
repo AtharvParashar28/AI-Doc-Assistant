@@ -1,11 +1,12 @@
-import fs from "node:fs/promises";
 import { PDFParse } from "pdf-parse";
-import path from "node:path";
+import { getFile } from "./s3.Service";
 
-export async function extractTextFromPdf(filePath: string): Promise<string> {
+export async function extractTextFromPdf(storageKey : string) : Promise<string> {
   try {
-    const pdfBuffer = await fs.readFile(filePath);
+    // download document from cloud and return extracted text
 
+    const pdfBuffer = await getFile(storageKey);
+    
     const parser = new PDFParse({
       data: pdfBuffer,
     });
@@ -15,22 +16,9 @@ export async function extractTextFromPdf(filePath: string): Promise<string> {
     await parser.destroy();
 
     return result.text;
+
   } catch (error) {
-    throw new Error(`Failed to extract text from PDF: ${error}`);
+    throw new Error(`Failed to extract text from PDF`);
   }
 }
-
-// const filePath = path.join(
-//   process.cwd(),
-//   "src",
-//   "test-documents",
-//   "Atharv_Parashar_July.pdf"
-// );
-
-// async function run (){
-//     const result = await extractTextFromPdf(filePath);
-//     console.log(result);
-// }
-
-// run();
 
