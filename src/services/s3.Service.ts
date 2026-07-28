@@ -35,12 +35,16 @@ import s3Client from "../config/s3";
     await s3Client.send(command);
   }
 
-  export async function getFile(key: string) {
+  export async function getFile(key: string): Promise<Buffer> {
     const command = new GetObjectCommand({
-      Bucket: process.env.AWS_BUCKET_NAME!,
-      Key: key,
+        Bucket: process.env.AWS_BUCKET_NAME!,
+        Key: key,
     });
 
-    return await s3Client.send(command);
-  }
+    const response = await s3Client.send(command);
+
+    const bytes = await response.Body!.transformToByteArray();
+
+    return Buffer.from(bytes);
+}
 

@@ -4,6 +4,7 @@ import prisma from "../config/prisma";
 import { DocumentType } from "../generated/prisma/enums";
 import { Pagination } from "../models/ApiResponse";
 import { deleteFile, uploadFile, getFile } from "./s3.Service";
+import { ingestionPipeline } from "./ingestionService";
 
 export type CreateDocumentPayload = {
     fileName: string,
@@ -19,7 +20,9 @@ export type UpdateDocumentPayload = {
     type?: DocumentType;
 }
 
-export async function createDocument(newDocument: CreateDocumentPayload) {
+export async function createDocument(
+    newDocument: CreateDocumentPayload
+) {
     const key = await uploadDocumentToCloud(
         newDocument.fileName,
         newDocument.fileBuffer,
@@ -27,20 +30,28 @@ export async function createDocument(newDocument: CreateDocumentPayload) {
     );
 
     try {
-        const document = await prisma.document.create({
-            data: {
-                fileName: newDocument.fileName,
-                type: newDocument.type,
-                uploadedBy: newDocument.uploadedBy,
-                storageKey: key,
-            },
+        const document = await prisma.$transaction(async (tx) => {
+            const document = await tx.document.create({
+                data: {
+                    fileName: newDocument.fileName,
+                    type: newDocument.type,
+                    uploadedBy: newDocument.uploadedBy,
+                    storageKey: key,
+                },
+            });
+
+            // Pass the transaction client instead of the global prisma client.
+            await ingestionPipeline(document.id, key, tx);
+
+            return document;
         });
 
         return document;
     } catch (error) {
-        console.error("Database save failed:", error);
+        console.error("Document creation failed:", error);
 
-        // Clean up uploaded file if database operation fails.
+        // Database transaction has already been rolled back.
+        // We only need to clean up the uploaded file.
         try {
             await deleteDocumentFromCloud(key);
         } catch (cleanupError) {
@@ -87,6 +98,7 @@ export async function deleteDocumentFromCloud(key: string) {
         throw err;
     }
 }
+
 
 export async function deleteDocumentById(documentId: string, userId: string) {
     // Retrieve a single document by ID.
