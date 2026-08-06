@@ -49,74 +49,74 @@ This project is being built with a strong focus on **clean architecture, backend
 ## System Architecture
 
 ```
-Client
-   │
-   ▼
-Express API
-   │
-   ├── Authentication
-   ├── Document Management
-   ├── Chat Management
-   └── AI Services
-            │
-            ▼
-      Retrieval Pipeline
-            │
-            ▼
-      Ollama (LLM)
+                           AI Document Assistant - V1 Architecture
+
+                                     +----------------+
+                                     |      User      |
+                                     +----------------+
+                                              |
+                                              | Upload PDF / Ask Question
+                                              v
+                               +-------------------------------+
+                               |        Backend API            |
+                               |   (Node.js + Express + TS)    |
+                               +-------------------------------+
+                                   |                      |
+                     Upload Flow    |                      | Chat Flow
+                                   |                      |
+                                   v                      v
+                     +--------------------+      +----------------------+
+                     |  Cloud Storage     |      |   Chat Service       |
+                     |     (AWS S3)       |      +----------------------+
+                     +--------------------+                  |
+                                   |                         |
+                                   |                         v
+                                   |              +----------------------+
+                                   |              |   Prompt Builder     |
+                                   |              +----------------------+
+                                   |                         |
+                                   |                         |
+                                   |              +----------------------+
+                                   |              | Retrieval Service    |
+                                   |              +----------------------+
+                                   |                         |
+                                   |                         |
+                                   |                         v
+                                   |              +----------------------+
+                                   |              | PostgreSQL +         |
+                                   |              | pgvector             |
+                                   |              | Document Chunks      |
+                                   |              +----------------------+
+                                   |                         ^
+                                   |                         |
+                                   v                         |
+                    +-----------------------------------------+
+                    |          Ingestion Pipeline             |
+                    |-----------------------------------------|
+                    | Extract Text                            |
+                    | Chunk Document                          |
+                    | Generate Embeddings                     |
+                    | Store Chunks + Embeddings               |
+                    +-----------------------------------------+
+                                   |
+                                   |
+                                   v
+                      +------------------------------+
+                      | PostgreSQL (Metadata & Chats)|
+                      +------------------------------+
+                                   |
+                                   |
+                                   +----------------------+
+                                                          |
+                                                          v
+                                            +-------------------------+
+                                            | Ollama (Gemma 3 4B)     |
+                                            +-------------------------+
+                                                          |
+                                                          v
+                                                   AI Response
+
 ```
-
----
-
-## RAG Architecture
-
-### Ingestion Pipeline
-
-```
-Document Upload
-        │
-        ▼
-Azure Blob Storage
-        │
-        ▼
-Extract Text
-        │
-        ▼
-Chunk Document
-        │
-        ▼
-Generate Embeddings
-        │
-        ▼
-Store Chunks + Vectors (pgvector)
-```
-
-### Retrieval Pipeline
-
-```
-User Question
-        │
-        ▼
-Generate Question Embedding
-        │
-        ▼
-Semantic Similarity Search
-        │
-        ▼
-Retrieve Relevant Chunks
-        │
-        ▼
-Prompt Builder
-(System Prompt + Context + Chat History + User Question)
-        │
-        ▼
-Ollama
-        │
-        ▼
-AI Response
-```
-
----
 
 ## Database Design
 
@@ -162,40 +162,8 @@ src/
 * AI Provider Abstraction
 * Scalable RAG Architecture
 
----
-
-## Roadmap
-
-### Completed
-
-* Authentication
-* JWT Authorization
-* Document CRUD APIs
-* PostgreSQL Integration
-* Prisma ORM
-* Chat Management
-* Ollama Integration
-
-### In Progress
-
-* Document Parsing
-* Chunking
-* Embedding Generation
-* pgvector Integration
-* Semantic Retrieval
-
-### Planned
-
-* Azure Blob Storage Integration
-* Background Processing
-* Streaming AI Responses
-* Document Versioning
-* Multi-model Support
-* Redis Caching
-* Observability & Metrics
 
 ---
-
 ## Learning Objectives
 
 This project is intentionally built without high-level AI frameworks to gain a deep understanding of:
@@ -239,9 +207,6 @@ OLLAMA_BASE_URL=
 
 OLLAMA_MODEL=
 
-AZURE_STORAGE_CONNECTION_STRING=
-
-AZURE_CONTAINER_NAME=
 ```
 
 ### Run Prisma migrations
