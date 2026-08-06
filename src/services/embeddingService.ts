@@ -15,9 +15,6 @@ export async function generateEmbeddings(
         throw new Error("No text provided for embedding generation.");
     }
 
-    if (texts.some(text => !text.trim())) {
-        throw new Error("Input contains empty text.");
-    }
 
     try {
         const { data } = await axios.post<EmbeddingResponse>(
