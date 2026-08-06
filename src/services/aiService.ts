@@ -1,6 +1,8 @@
 import axios from "axios"
 import prisma from "../config/prisma"
 import { MessageRole } from "../generated/prisma/enums"
+import { promptBuilder } from "./promptBuilder"
+import { getDocumentByIdForUser } from "./documentService"
 
 // Better prompt -> Objective -> Context -> Constraint -> Output format
 type promptPayload = {
@@ -27,7 +29,7 @@ type messagePayload = {
     content: string
 }
 
-export async function generateResponse(prompt: string, chatId: string, userId: string) {
+export async function generateResponse(userQuery: string, chatId: string, userId: string) {
     const model = process.env.MODEL!;
     const endpoint = process.env.OLLAMA_ENDPOINT!;
     const temp = Number(process.env.TEMPERATURE!);
@@ -37,10 +39,15 @@ export async function generateResponse(prompt: string, chatId: string, userId: s
     // store new message and get chat history
     // build required body for ollama
 
+    const documentId = await getDocumentIdUsingChatId(chatId);
+
+    
+    const prompt : string = await promptBuilder(userQuery, documentId!);
+    
     const userMessage: messagePayload = {
         chatId: chatId,
         role: MessageRole.USER,
-        content: prompt
+        content: userQuery
     }
 
 
@@ -48,13 +55,9 @@ export async function generateResponse(prompt: string, chatId: string, userId: s
 
     const context = await getChatHistory(chatId, userId);
 
-    console.log(context);
-
-
-
     const payload: promptPayload = {
         model: model,
-        messages: context,
+        messages: context, //to be replaced by refind promtp
         options: {
             temperature: temp,
             num_predict: num,
@@ -145,4 +148,17 @@ export async function storeMessages(newMessage: messagePayload) {
     } catch (error) {
         throw error;
     }
+}
+
+export async function getDocumentIdUsingChatId(chatId : string) {
+    const result = await prisma.chat.findFirst({
+        where : {
+            id : chatId
+        },
+        select : {
+            documentId : true,
+        }
+       
+    })
+    return result?.documentId;
 }
