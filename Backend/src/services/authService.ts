@@ -1,29 +1,57 @@
-import jwt, { SignOptions } from 'jsonwebtoken';
+import jwt, { SignOptions } from "jsonwebtoken";
 
-export interface JwtPayload {
-  userId: string;
-  email : string
+export type TokenType = "ACCESS" | "REFRESH";
+
+export interface TokenPayload {
+    userId: string;
+    email: string;
+    type: TokenType;
 }
 
-const expiresIn = process.env.JWT_EXPIRES_IN || '1h';
-const secretKeyRaw = process.env.JWT_SECRET ;
+// Access token configuration
+const accessTokenExpiresIn = process.env.ACCESS_TOKEN_EXPIRES_IN || "5m";
+const rawAccessTokenSecretKey = process.env.ACCESS_TOKEN_SECRET_KEY;
 
-if(!secretKeyRaw){
-  throw new Error('Jwt secret is required');
+// Refresh token configuration
+const refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || "7d";
+const rawRefreshTokenSecretKey = process.env.REFRESH_TOKEN_SECRET_KEY;
+
+if (!rawAccessTokenSecretKey || !rawRefreshTokenSecretKey) {
+    throw new Error("JWT secret is required");
 }
 
-const secretKey : string = secretKeyRaw!;
+const accessTokenSecretKey: string = rawAccessTokenSecretKey;
+const refreshTokenSecretKey: string = rawRefreshTokenSecretKey;
 
-export function generateToken(payload: JwtPayload): string {
-  return jwt.sign(
-    payload,
-    secretKey,
-    {
-      expiresIn,
-    } as SignOptions,
-  );
+function getTokenConfig(type: TokenType) {
+    if (type === "ACCESS") {
+        return {
+            secret: accessTokenSecretKey,
+            expiresIn: accessTokenExpiresIn,
+        };
+    }
+
+    return {
+        secret: refreshTokenSecretKey,
+        expiresIn: refreshTokenExpiresIn,
+    };
 }
 
-export function verifyToken(token: string): JwtPayload {
-  return jwt.verify(token, secretKey) as JwtPayload;
+export function generateToken(payload: TokenPayload): string {
+    const { secret, expiresIn } = getTokenConfig(payload.type);
+
+    return jwt.sign(
+        payload,
+        secret,
+        { expiresIn } as SignOptions
+    );
+}
+
+export function verifyToken(
+    token: string,
+    type: TokenType
+): TokenPayload {
+    const { secret } = getTokenConfig(type);
+
+    return jwt.verify(token, secret) as TokenPayload;
 }

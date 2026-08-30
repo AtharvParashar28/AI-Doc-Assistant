@@ -30,7 +30,7 @@ export function authMiddleware(req: Request, res: Response<ApiResponse>, next: N
     const token = match[1].trim();
 
         // verifyToken should throw if token is invalid or expired
-        const decoded = verifyToken(token);
+        const decoded = verifyToken(token,"ACCESS");
 
         // Attach payload to typed request object.
         req.user = decoded;

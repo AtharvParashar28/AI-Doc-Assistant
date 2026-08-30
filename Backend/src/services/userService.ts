@@ -33,11 +33,16 @@ export async function createUser(user: UserData) {
             }
         )
 
-        // store user data and generate a token
+        // store user data and generate a short live access token
 
-        const token = generateToken({ userId: userCreationResult.id, email: userCreationResult.email });
+        const accessToken = generateToken({ userId: userCreationResult.id, email: userCreationResult.email, type : "ACCESS"});
+        const refreshToken = generateToken({ userId: userCreationResult.id, email: userCreationResult.email, type : "REFRESH"});
+        
+        return {
+            accessToken, refreshToken
+        }
+        
 
-        return token;
     } catch (error) {
         console.log(error);
         throw error;
@@ -64,7 +69,13 @@ export async function loginUser(user: UserData) {
         throw error;
     }
 
-    return generateToken({ userId: existingUser.id, email: existingUser.email });
+
+    const accessToken = generateToken({ userId: existingUser.id, email: existingUser.email, type : "ACCESS"});
+        const refreshToken = generateToken({ userId: existingUser.id, email: existingUser.email, type : "REFRESH"});
+        
+        return {
+            accessToken, refreshToken
+        }
 }
 
 export async function isUserExist(email: string) {
